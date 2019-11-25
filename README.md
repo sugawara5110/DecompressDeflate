@@ -1,4 +1,4 @@
 # DecompressDeflate
 
-Deflate圧縮されてるファイルの解凍処理です
+Deflate圧縮ファイルの解凍処理です
  
