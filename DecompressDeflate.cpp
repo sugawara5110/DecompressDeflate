@@ -4,63 +4,76 @@
 //**                                                                                     **//
 //*****************************************************************************************//
 
+#define _CRT_SECURE_NO_WARNINGS
 #include "DecompressDeflate.h"
 #include <string.h>
 
-static const int bitMask[]{
-	0b0000000000000000,
-	0b0000000000000001,
-	0b0000000000000011,
-	0b0000000000000111,
-	0b0000000000001111,
-	0b0000000000011111,
-	0b0000000000111111,
-	0b0000000001111111,
-	0b0000000011111111,
-	0b0000000111111111,
-	0b0000001111111111,
-	0b0000011111111111,
-	0b0000111111111111,
-	0b0001111111111111,
-	0b0011111111111111,
-	0b0111111111111111,
-	0b1111111111111111
-};
+namespace {
+	const int bitMask[]{
+		0b0000000000000000,
+		0b0000000000000001,
+		0b0000000000000011,
+		0b0000000000000111,
+		0b0000000000001111,
+		0b0000000000011111,
+		0b0000000000111111,
+		0b0000000001111111,
+		0b0000000011111111,
+		0b0000000111111111,
+		0b0000001111111111,
+		0b0000011111111111,
+		0b0000111111111111,
+		0b0001111111111111,
+		0b0011111111111111,
+		0b0111111111111111,
+		0b1111111111111111
+	};
 
-static const int byteArrayNumbit = 8;
-static const int LEFT_INV_BIT1 = 0b0101010101010101;
-static const int RIGHT_INV_BIT1 = 0b1010101010101010;
-static const int LEFT_INV_BIT2 = 0b0011001100110011;
-static const int RIGHT_INV_BIT2 = 0b1100110011001100;
-static const int LEFT_INV_BIT4 = 0b0000111100001111;
-static const int RIGHT_INV_BIT4 = 0b1111000011110000;
+	const int byteArrayNumbit = 8;
+	const int LEFT_INV_BIT1 = 0b0101010101010101;
+	const int RIGHT_INV_BIT1 = 0b1010101010101010;
+	const int LEFT_INV_BIT2 = 0b0011001100110011;
+	const int RIGHT_INV_BIT2 = 0b1100110011001100;
+	const int LEFT_INV_BIT4 = 0b0000111100001111;
+	const int RIGHT_INV_BIT4 = 0b1111000011110000;
 
-static unsigned short intInversion(unsigned short ba, int numBit) {
-	unsigned short oBa = 0;
-	const int baseNum = 16;
-	oBa = ((ba & LEFT_INV_BIT1) << 1) | ((ba & RIGHT_INV_BIT1) >> 1);
-	oBa = ((oBa & LEFT_INV_BIT2) << 2) | ((oBa & RIGHT_INV_BIT2) >> 2);
-	oBa = ((oBa & LEFT_INV_BIT4) << 4) | ((oBa & RIGHT_INV_BIT4) >> 4);
-	return ((oBa << 8) | (oBa >> 8)) >> (baseNum - numBit);
-}
+	const unsigned short dest[] =
+	{ 1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577 };
 
-static void bitInversion(unsigned char* ba, unsigned int size) {
-	for (unsigned int i = 0; i < size; i++) {
-		ba[i] = (unsigned char)intInversion((unsigned short)ba[i], 8);
+	const unsigned char NumBit[] =
+	{ 0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13 };
+
+	unsigned short intInversion(unsigned short ba, int numBit) {
+		unsigned short oBa = 0;
+		const int baseNum = 16;
+		oBa = ((ba & LEFT_INV_BIT1) << 1) | ((ba & RIGHT_INV_BIT1) >> 1);
+		oBa = ((oBa & LEFT_INV_BIT2) << 2) | ((oBa & RIGHT_INV_BIT2) >> 2);
+		oBa = ((oBa & LEFT_INV_BIT4) << 4) | ((oBa & RIGHT_INV_BIT4) >> 4);
+		return ((oBa << 8) | (oBa >> 8)) >> (baseNum - numBit);
 	}
+
+	void bitInversion(unsigned char* ba, unsigned int size) {
+		for (unsigned int i = 0; i < size; i++) {
+			ba[i] = (unsigned char)intInversion((unsigned short)ba[i], 8);
+		}
+	}
+
+	void getBit(unsigned long long* CurSearchBit, unsigned char* byteArray, unsigned char NumBit, unsigned short* outBinArr, bool firstRight) {
+		unsigned int baind = (unsigned int)(*CurSearchBit / byteArrayNumbit);//配列インデックス
+		unsigned int bitPos = (unsigned int)(*CurSearchBit % byteArrayNumbit);//要素内bit位置インデックス
+		unsigned char shiftBit = byteArrayNumbit * 3 - NumBit - bitPos;
+		*outBinArr = (((byteArray[baind] << 16) | (byteArray[baind + 1] << 8) |
+			byteArray[baind + 2]) >> shiftBit) & bitMask[NumBit];
+		if (firstRight) *outBinArr = intInversion(*outBinArr, NumBit);
+		*CurSearchBit += NumBit;
+	}
+
+	void s_DELETE(void* p) { if (p) { delete p;    p = nullptr; } }
+	void a_DELETE(void* p) { if (p) { delete[] p;    p = nullptr; } }
+	void copyStr(char* outStr, char* inStr) { if (outStr) { strcpy(outStr, inStr); } }
 }
 
-static void getBit(unsigned long long* CurSearchBit, unsigned char* byteArray, unsigned char NumBit, unsigned short* outBinArr, bool firstRight) {
-	unsigned int baind = (unsigned int)(*CurSearchBit / byteArrayNumbit);//配列インデックス
-	unsigned int bitPos = (unsigned int)(*CurSearchBit % byteArrayNumbit);//要素内bit位置インデックス
-	unsigned char shiftBit = byteArrayNumbit * 3 - NumBit - bitPos;
-	*outBinArr = (((byteArray[baind] << 16) | (byteArray[baind + 1] << 8) |
-		byteArray[baind + 2]) >> shiftBit) & bitMask[NumBit];
-	if (firstRight) * outBinArr = intInversion(*outBinArr, NumBit);
-	*CurSearchBit += NumBit;
-}
-
-void HuffmanNode::setVal(unsigned short val, unsigned short bitArr, unsigned char numBit) {
+void DecompressDeflate::HuffmanNode::setVal(unsigned short val, unsigned short bitArr, unsigned char numBit) {
 	if (numBit == 0) {//葉まで到達したら値を格納
 		Val = val;
 		return;
@@ -75,7 +88,7 @@ void HuffmanNode::setVal(unsigned short val, unsigned short bitArr, unsigned cha
 	}
 }
 
-unsigned short HuffmanNode::getVal(unsigned long long* curSearchBit, unsigned char* byteArray) {
+unsigned short DecompressDeflate::HuffmanNode::getVal(unsigned long long* curSearchBit, unsigned char* byteArray) {
 	if (!bit0 && !bit1) {//葉まで到達したら値を返す
 		return Val;
 	}
@@ -89,27 +102,21 @@ unsigned short HuffmanNode::getVal(unsigned long long* curSearchBit, unsigned ch
 	}
 }
 
-HuffmanNode::~HuffmanNode() {
+DecompressDeflate::HuffmanNode::~HuffmanNode() {
 	s_DELETE(bit0);
 	s_DELETE(bit1);
 }
 
-void HuffmanTree::createTree(unsigned short* signArr, unsigned char* numSignArr, unsigned int arraySize) {
+void DecompressDeflate::HuffmanTree::createTree(unsigned short* signArr, unsigned char* numSignArr, unsigned int arraySize) {
 	for (unsigned int i = 0; i < arraySize; i++) {
 		if (numSignArr[i] == 0)continue;//符号長0(符号無し)はスキップ
 		hn.setVal(i, signArr[i], numSignArr[i]);
 	}
 }
 
-unsigned short HuffmanTree::getVal(unsigned long long* curSearchBit, unsigned char* byteArray) {
+unsigned short DecompressDeflate::HuffmanTree::getVal(unsigned long long* curSearchBit, unsigned char* byteArray) {
 	return hn.getVal(curSearchBit, byteArray);
 }
-
-const unsigned short DecompressDeflate::dest[] = { 1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,
-257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577 };
-
-const unsigned char DecompressDeflate::NumBit[] = { 0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,
-7,7,8,8,9,9,10,10,11,11,12,12,13,13 };
 
 void DecompressDeflate::getLength(unsigned short val, unsigned short *len, unsigned char *bitlen) {
 	*len = 0;
@@ -148,16 +155,18 @@ void DecompressDeflate::getDestLength(unsigned short val, unsigned short *len, u
 	*bitlen = NumBit[val];
 }
 
-void DecompressDeflate::DecompressLZSS(unsigned char *outArray, unsigned int *outIndex, unsigned short MatchLen, unsigned short destLen) {
+bool DecompressDeflate::DecompressLZSS(unsigned char* outArray, unsigned int* outIndex, unsigned short MatchLen, unsigned short destLen) {
+	if (*outIndex < destLen)return false;
 	unsigned int srcInd = *outIndex - destLen;
-	unsigned char *src = &outArray[srcInd];
-	unsigned char *dst = &outArray[*outIndex];
+	unsigned char* src = &outArray[srcInd];
+	unsigned char* dst = &outArray[*outIndex];
 	//一致長MatchLen > 自分からの距離destLenの場合一致長に達するまで同じとこを繰り返す
 	for (unsigned short i = 0; i < MatchLen; i++) {
 		unsigned int sind = i % destLen;
 		dst[i] = src[sind];
 	}
 	*outIndex += MatchLen;
+	return true;
 }
 
 void DecompressDeflate::createFixedHuffmanSign() {
@@ -382,7 +391,9 @@ void DecompressDeflate::createCustomHuffmanSign(unsigned long long* curSearchBit
 	a_DELETE(destSigLenListCopy);
 }
 
-void DecompressDeflate::DecompressHuffman(unsigned long long* curSearchBit, unsigned char* byteArray, unsigned int* outIndex, unsigned char* outArray) {
+bool DecompressDeflate::DecompressHuffman(unsigned long long* curSearchBit, unsigned char* byteArray,
+	unsigned int* outIndex, unsigned char* outArray, unsigned int size) {
+
 	//符号範囲探索
 	bool roop = true;
 	while (roop) {
@@ -393,6 +404,9 @@ void DecompressDeflate::DecompressHuffman(unsigned long long* curSearchBit, unsi
 		}
 		if (val == 256) {
 			roop = false;
+		}
+		if (size * 8 < *curSearchBit) {
+			return false;
 		}
 		if (256 < val) {
 			//文字一致長取得//257~264は拡張ビット無し
@@ -411,11 +425,12 @@ void DecompressDeflate::DecompressHuffman(unsigned long long* curSearchBit, unsi
 			getBit(curSearchBit, byteArray, destbitlen, &outExpansionlenBit, true);
 			destLen += outExpansionlenBit;
 			//取り出した一致長, 距離から値を読み出す
-			DecompressLZSS(outArray, outIndex, MatchLen, destLen);
+			if (!DecompressLZSS(outArray, outIndex, MatchLen, destLen))return false;
 		}
 	}
 	s_DELETE(strTree);
 	s_DELETE(lenTree);
+	return true;
 }
 
 void DecompressDeflate::Uncompress(unsigned long long *curSearchBit, unsigned char *byteArray, unsigned int *outIndex, unsigned char *outArray) {
@@ -444,7 +459,7 @@ unsigned short DecompressDeflate::blockType(unsigned long long *curSearchBit, un
 	return bt;
 }
 
-bool DecompressDeflate::getDecompressArray(unsigned char *bA, unsigned int size, unsigned char *outArray) {
+bool DecompressDeflate::getDecompressArray(unsigned char* bA, unsigned int size, unsigned char* outArray, char* errorCode) {
 	unsigned long long curSearchBit = 0;//現bit位置
 	unsigned int outIndex = 0;//outArrayはBYTE単位で書き込み
 	bitInversion(bA, size);
@@ -463,10 +478,16 @@ bool DecompressDeflate::getDecompressArray(unsigned char *bA, unsigned int size,
 			createCustomHuffmanSign(&curSearchBit, bA);
 			break;
 		case 3:
+			copyStr(errorCode, "BTYPE Error");
 			return false;
 		}
-		if (sw == 1 || sw == 2)
-			DecompressHuffman(&curSearchBit, bA, &outIndex, outArray);
+		if (sw == 1 || sw == 2) {
+			if (!DecompressHuffman(&curSearchBit, bA, &outIndex, outArray, size)) {
+				copyStr(errorCode, "Bit position error");
+				return false;
+			}
+		}
 	}
+	copyStr(errorCode, "Success");
 	return true;
 }

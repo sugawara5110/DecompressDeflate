@@ -7,42 +7,30 @@
 #ifndef Class_DecompressDeflate_Header
 #define Class_DecompressDeflate_Header
 
-#define s_DELETE(p) if(p){delete p;    p=nullptr;}
-#define a_DELETE(p) if(p){delete[] p;    p=nullptr;}
-#define NUMSTR 286
-#define NUMLEN 30
-
-class DecompressDeflate;
-class HuffmanTree;
-
-class HuffmanNode {
-
-private:
-	friend HuffmanTree;
-	HuffmanNode* bit0 = nullptr;
-	HuffmanNode* bit1 = nullptr;
-	unsigned short Val = 0;
-
-	void setVal(unsigned short val, unsigned short bitArr, unsigned char numBit);
-	unsigned short getVal(unsigned long long* curSearchBit, unsigned char* byteArray);
-	~HuffmanNode();
-};
-
-class HuffmanTree {
-
-private:
-	friend DecompressDeflate;
-	HuffmanNode hn;
-
-	void createTree(unsigned short* signArr, unsigned char* numSignArr, unsigned int arraySize);
-	unsigned short getVal(unsigned long long* curSearchBit, unsigned char* byteArray);
-};
-
 class DecompressDeflate {
 
 private:
-	static const unsigned short dest[];
-	static const unsigned char NumBit[];
+	class HuffmanNode {
+	public:
+		HuffmanNode* bit0 = nullptr;
+		HuffmanNode* bit1 = nullptr;
+		unsigned short Val = 0;
+
+		void setVal(unsigned short val, unsigned short bitArr, unsigned char numBit);
+		unsigned short getVal(unsigned long long* curSearchBit, unsigned char* byteArray);
+		~HuffmanNode();
+	};
+
+	class HuffmanTree {
+	public:
+		HuffmanNode hn;
+
+		void createTree(unsigned short* signArr, unsigned char* numSignArr, unsigned int arraySize);
+		unsigned short getVal(unsigned long long* curSearchBit, unsigned char* byteArray);
+	};
+
+	static const int NUMSTR = 286;
+	static const int NUMLEN = 30;
 	unsigned short strSign[NUMSTR] = {};
 	unsigned char strNumSign[NUMSTR] = {};
 	unsigned short lenSign[NUMLEN] = {};
@@ -52,18 +40,18 @@ private:
 
 	void getLength(unsigned short DecryptionVal, unsigned short* len, unsigned char* bitlen);
 	void getDestLength(unsigned short Val, unsigned short* len, unsigned char* bitlen);
-	void DecompressLZSS(unsigned char* outArray, unsigned int* outIndex, unsigned short MatchLen, unsigned short destLen);
+	bool DecompressLZSS(unsigned char* outArray, unsigned int* outIndex, unsigned short MatchLen, unsigned short destLen);
 	void createFixedHuffmanSign();
 	void SortIndex(unsigned short* sortedIndex, unsigned char* hclens, unsigned int size);
 	void CreateSign(unsigned short* clens, unsigned char* hclens, unsigned short* SortedIndex, unsigned int size);
 	void createCustomHuffmanSign(unsigned long long* curSearchBit, unsigned char* byteArray);
-	void DecompressHuffman(unsigned long long* curSearchBit, unsigned char* byteArray, unsigned int* outIndex, unsigned char* outArray);
+	bool DecompressHuffman(unsigned long long* curSearchBit, unsigned char* byteArray, unsigned int* outIndex, unsigned char* outArray, unsigned int size);
 	void Uncompress(unsigned long long* curSearchBit, unsigned char* byteArray, unsigned int* outIndex, unsigned char* outArray);
 	unsigned short blockFinal(unsigned long long* curSearchBit, unsigned char* byteArray);
 	unsigned short blockType(unsigned long long* curSearchBit, unsigned char* byteArray);
 
 public:
-	bool getDecompressArray(unsigned char* byteArray, unsigned int size, unsigned char* outArray);
+	bool getDecompressArray(unsigned char* byteArray, unsigned int size, unsigned char* outArray, char* errorCode = nullptr);
 };
 
 #endif
