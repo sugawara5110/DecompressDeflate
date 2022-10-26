@@ -68,8 +68,10 @@ namespace {
 		*CurSearchBit += NumBit;
 	}
 
-	void s_DELETE(void* p) { if (p) { delete p;    p = nullptr; } }
-	void a_DELETE(void* p) { if (p) { delete[] p;    p = nullptr; } }
+	template<typename TYPE>
+	void s_DELETE(TYPE p) { if (p) { delete p;    p = nullptr; } }
+	template<typename TYPE>
+	void a_DELETE(TYPE p) { if (p) { delete[] p;    p = nullptr; } }
 	void copyStr(char* outStr, char* inStr) { if (outStr) { strcpy(outStr, inStr); } }
 }
 
