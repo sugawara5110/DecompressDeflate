@@ -69,9 +69,9 @@ namespace {
 	}
 
 	template<typename TYPE>
-	void s_DELETE(TYPE p) { if (p) { delete p;    p = nullptr; } }
+	void s_DELETE(TYPE& p) { if (p) { delete p;    p = nullptr; } }
 	template<typename TYPE>
-	void a_DELETE(TYPE p) { if (p) { delete[] p;    p = nullptr; } }
+	void a_DELETE(TYPE& p) { if (p) { delete[] p;    p = nullptr; } }
 	void copyStr(char* outStr, char* inStr) { if (outStr) { strcpy(outStr, inStr); } }
 }
 
@@ -201,13 +201,13 @@ void DecompressDeflate::createFixedHuffmanSign() {
 	lenTree->createTree(lenSign, lenNumSign, NUMLEN);
 }
 
-void DecompressDeflate::SortIndex(unsigned short *sortedIndex, unsigned char *hclens, unsigned int size) {
+void DecompressDeflate::SortIndex(unsigned short* sortedIndex, unsigned char* hclens, unsigned int size) {
 	unsigned int topSize = (unsigned int)(size * 0.5);
 	unsigned int halfSize = size - topSize;
-	unsigned short *topSortedIndex = new unsigned short[topSize];
-	unsigned short *halfSortedIndex = new unsigned short[halfSize];
-	unsigned char *tophclens = new unsigned char[topSize];
-	unsigned char *halfhclens = new unsigned char[halfSize];
+	unsigned short* topSortedIndex = new unsigned short[topSize];
+	unsigned short* halfSortedIndex = new unsigned short[halfSize];
+	unsigned char* tophclens = new unsigned char[topSize];
+	unsigned char* halfhclens = new unsigned char[halfSize];
 	memcpy(topSortedIndex, sortedIndex, topSize * sizeof(unsigned short));
 	memcpy(halfSortedIndex, &sortedIndex[topSize], halfSize * sizeof(unsigned short));
 	memcpy(tophclens, hclens, topSize * sizeof(unsigned char));
